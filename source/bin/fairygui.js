@@ -1567,6 +1567,9 @@ window.__extends = (this && this.__extends) || (function () {
         GObject.prototype.off = function (type, listener, target) {
             this._node.off(type, listener, target);
         };
+        GObject.prototype.clear = function (type) {
+            this._node.off(type);
+        };
         Object.defineProperty(GObject.prototype, "draggable", {
             get: function () {
                 return this._draggable;

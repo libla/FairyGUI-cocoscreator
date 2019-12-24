@@ -765,8 +765,12 @@ namespace fgui {
             this._node.on(type, listener, target);
         }
 
-        public off(type: string, listener?: Function, target?: any): void {
+        public off(type: string, listener: Function, target?: any): void {
             this._node.off(type, listener, target);
+        }
+
+        public clear(type: string): void {
+            this._node.off(type);
         }
 
         public get draggable(): boolean {
