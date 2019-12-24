@@ -380,8 +380,7 @@ declare namespace fgui {
         clearClick(): void;
         hasClickListener(): boolean;
         on(type: string, listener: Function, target?: any): void;
-        off(type: string, listener: Function, target?: any): void;
-        clear(type: string): void;
+        off(type: string, listener?: Function, target?: any): void;
         draggable: boolean;
         dragBounds: cc.Rect;
         startDrag(touchId?: number): void;
