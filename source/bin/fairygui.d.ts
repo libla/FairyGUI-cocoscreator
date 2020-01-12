@@ -1654,6 +1654,7 @@ declare namespace fgui {
 }
 declare namespace fgui {
     class UIObjectFactory {
+        static counter: number;
         static extensions: any;
         private static loaderType;
         constructor();
@@ -1661,7 +1662,7 @@ declare namespace fgui {
         static setExtension(url: string, type: any): void;
         static setLoaderExtension(type: any): void;
         static resolveExtension(pi: PackageItem): void;
-        static newObject(pi: PackageItem): GObject;
+        static newObject(pi: PackageItem, userClass?: any): GObject;
         static newObject2(type: ObjectType): GObject;
     }
 }

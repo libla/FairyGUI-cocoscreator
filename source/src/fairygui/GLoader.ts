@@ -160,7 +160,7 @@ namespace fgui {
                 this.updateGear(5);
             }
         }
-        
+
         public get color(): cc.Color {
             return this._color;
         }
@@ -267,12 +267,14 @@ namespace fgui {
                     }
                     else {
                         this._content.spriteFrame = <cc.SpriteFrame>this._contentItem.asset;
-                        if (this._contentItem.scale9Grid)
-                            this._content.type = cc.Sprite.Type.SLICED;
-                        else if (this._contentItem.scaleByTile)
-                            this._content.type = cc.Sprite.Type.TILED;
-                        else
-                            this._content.type = cc.Sprite.Type.SIMPLE;
+                        if (this._content.fillMethod == 0) {
+                            if (this._contentItem.scale9Grid)
+                                this._content.type = cc.Sprite.Type.SLICED;
+                            else if (this._contentItem.scaleByTile)
+                                this._content.type = cc.Sprite.Type.TILED;
+                            else
+                                this._content.type = cc.Sprite.Type.SIMPLE;
+                        }
                         this.updateLayout();
                     }
                 }
@@ -397,7 +399,7 @@ namespace fgui {
                 this._container.setContentSize(this._width, this._height);
                 this._container.setPosition(pivotCorrectX, pivotCorrectY);
                 if (this._content2 != null) {
-                    this._content2.setPosition(pivotCorrectX - this._width / 2, pivotCorrectY - this._height / 2);
+                    this._content2.setPosition(pivotCorrectX + this._width * this.pivotX, pivotCorrectY - this._height * this.pivotY);
                     this._content2.setScale(1, 1);
                 }
                 if (this._contentWidth == this._width && this._contentHeight == this._height)
@@ -439,7 +441,7 @@ namespace fgui {
 
             this._container.setContentSize(this._contentWidth, this._contentHeight);
             if (this._content2 != null) {
-                this._content2.setPosition(pivotCorrectX - this._width / 2, pivotCorrectY - this._height / 2);
+                this._content2.setPosition(pivotCorrectX + this._width * this.pivotX, pivotCorrectY - this._height * this.pivotY);
                 this._content2.setScale(sx, sy);
             }
 
