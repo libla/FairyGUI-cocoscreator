@@ -1533,6 +1533,9 @@ window.__extends = (this && this.__extends) || (function () {
         GObject.prototype.onClick = function (listener, target) {
             this._node.on(fgui.Event.CLICK, listener, target);
         };
+        GObject.prototype.onceClick = function (listener, target) {
+            this._node.once(fgui.Event.CLICK, listener, target);
+        };
         GObject.prototype.offClick = function (listener, target) {
             this._node.off(fgui.Event.CLICK, listener, target);
         };
@@ -1546,6 +1549,11 @@ window.__extends = (this && this.__extends) || (function () {
             if (type == fgui.Event.DISPLAY || type == fgui.Event.UNDISPLAY)
                 this._partner._emitDisplayEvents = true;
             this._node.on(type, listener, target);
+        };
+        GObject.prototype.once = function (type, listener, target) {
+            if (type == fgui.Event.DISPLAY || type == fgui.Event.UNDISPLAY)
+                this._partner._emitDisplayEvents = true;
+            this._node.once(type, listener, target);
         };
         GObject.prototype.off = function (type, listener, target) {
             this._node.off(type, listener, target);
@@ -4615,7 +4623,7 @@ window.__extends = (this && this.__extends) || (function () {
             if (buffer.version >= 2) {
                 this._excludeInvisibles = buffer.readBool();
                 this._autoSizeDisabled = buffer.readBool();
-                this._mainChildIndex = buffer.readInt();
+                this._mainGridIndex = buffer.readShort();
             }
         };
         GGroup.prototype.setup_afterAdd = function (buffer, beginPos) {
@@ -4645,10 +4653,8 @@ window.__extends = (this && this.__extends) || (function () {
                 return this._node.color;
             },
             set: function (value) {
-                if (!this._node.color.equals(value)) {
-                    this._node.color = value;
-                    this.updateGear(4);
-                }
+                this._node.color = value;
+                this.updateGear(4);
             },
             enumerable: false,
             configurable: true
@@ -4971,6 +4977,7 @@ window.__extends = (this && this.__extends) || (function () {
             return _this;
         }
         GList.prototype.dispose = function () {
+            this._partner.unschedule(this._refreshVirtualList);
             this._pool.clear();
             _super.prototype.dispose.call(this);
         };
@@ -5177,7 +5184,8 @@ window.__extends = (this && this.__extends) || (function () {
         };
         GList.prototype.removeChildAt = function (index, dispose) {
             var child = _super.prototype.removeChildAt.call(this, index, dispose);
-            child.off(fgui.Event.CLICK, this.onClickItem, this);
+            if (!dispose)
+                child.off(fgui.Event.CLICK, this.onClickItem, this);
             return child;
         };
         GList.prototype.removeChildToPoolAt = function (index) {
@@ -7227,11 +7235,9 @@ window.__extends = (this && this.__extends) || (function () {
                 return this._color;
             },
             set: function (value) {
-                if (!this._color.equals(value)) {
-                    this._color.set(value);
-                    this.updateGear(4);
-                    this._container.color = value;
-                }
+                this._color.set(value);
+                this.updateGear(4);
+                this._container.color = value;
             },
             enumerable: false,
             configurable: true
@@ -7377,22 +7383,24 @@ window.__extends = (this && this.__extends) || (function () {
                 this.setErrorState();
         };
         GLoader.prototype.loadExternal = function () {
+            var _this = this;
+            var url = this.url;
+            var callback = function (err, asset) {
+                if (_this._url != url || !cc.isValid(_this._node))
+                    return;
+                if (err)
+                    console.warn(err);
+                if (asset instanceof cc.SpriteFrame)
+                    _this.onExternalLoadSuccess(asset);
+                else if (asset instanceof cc.Texture2D)
+                    _this.onExternalLoadSuccess(new cc.SpriteFrame(asset));
+            };
             if (fgui.ToolSet.startsWith(this._url, "http://")
                 || fgui.ToolSet.startsWith(this._url, "https://")
                 || fgui.ToolSet.startsWith(this._url, '/'))
-                cc.assetManager.loadRemote(this._url, this.onLoaded.bind(this));
+                cc.assetManager.loadRemote(this._url, callback);
             else
-                cc.resources.load(this._url, cc.Asset, this.onLoaded.bind(this));
-        };
-        GLoader.prototype.onLoaded = function (err, asset) {
-            if (!this._url || !cc.isValid(this._node))
-                return;
-            if (err)
-                console.warn(err);
-            if (asset instanceof cc.SpriteFrame)
-                this.onExternalLoadSuccess(asset);
-            else if (asset instanceof cc.Texture2D)
-                this.onExternalLoadSuccess(new cc.SpriteFrame(asset));
+                cc.resources.load(this._url, cc.Asset, callback);
         };
         GLoader.prototype.freeExternal = function (texture) {
         };
@@ -7797,19 +7805,17 @@ window.__extends = (this && this.__extends) || (function () {
                 return this._color;
             },
             set: function (value) {
-                if (!this._color.equals(value)) {
-                    this._color.set(value);
-                    this.updateGear(4);
-                    if (this._content)
-                        this._content.node.color = value;
-                }
+                this._color.set(value);
+                this.updateGear(4);
+                if (this._content)
+                    this._content.node.color = value;
             },
             enumerable: false,
             configurable: true
         });
         Object.defineProperty(GLoader3D.prototype, "content", {
             get: function () {
-                return;
+                return this._content;
             },
             enumerable: false,
             configurable: true
@@ -7850,6 +7856,7 @@ window.__extends = (this && this.__extends) || (function () {
         };
         GLoader3D.prototype.setSpine = function (asset, anchor, pma) {
             this.url = null;
+            this.clearContent();
             var node = new cc.Node();
             node.color = this._color;
             this._container.addChild(node);
@@ -7862,6 +7869,7 @@ window.__extends = (this && this.__extends) || (function () {
         };
         GLoader3D.prototype.setDragonBones = function (asset, atlasAsset, anchor, pma) {
             this.url = null;
+            this.clearContent();
             var node = new cc.Node();
             node.color = this._color;
             this._container.addChild(node);
@@ -8090,10 +8098,8 @@ window.__extends = (this && this.__extends) || (function () {
                 return this._node.color;
             },
             set: function (value) {
-                if (!this._node.color.equals(value)) {
-                    this._node.color = value;
-                    this.updateGear(4);
-                }
+                this._node.color = value;
+                this.updateGear(4);
             },
             enumerable: false,
             configurable: true
@@ -8140,8 +8146,8 @@ window.__extends = (this && this.__extends) || (function () {
         GMovieClip.prototype.syncStatus = function (anotherMc) {
             this._content.syncStatus(anotherMc._content);
         };
-        GMovieClip.prototype.advance = function (timeInMiniseconds) {
-            this._content.advance(timeInMiniseconds);
+        GMovieClip.prototype.advance = function (timeInSeconds) {
+            this._content.advance(timeInSeconds);
         };
         GMovieClip.prototype.setPlaySettings = function (start, end, times, endAt, endCallback, callbackObj) {
             this._content.setPlaySettings(start, end, times, endAt, endCallback, callbackObj);
@@ -8489,11 +8495,9 @@ window.__extends = (this && this.__extends) || (function () {
                 return this._color;
             },
             set: function (value) {
-                if (!this._color.equals(value)) {
-                    this._color.set(value);
-                    this.updateGear(4);
-                    this.updateFontColor();
-                }
+                this._color.set(value);
+                this.updateGear(4);
+                this.updateFontColor();
             },
             enumerable: false,
             configurable: true
@@ -8618,13 +8622,11 @@ window.__extends = (this && this.__extends) || (function () {
                 return this._strokeColor;
             },
             set: function (value) {
-                if (!this._strokeColor || !this._strokeColor.equals(value)) {
-                    if (!this._strokeColor)
-                        this._strokeColor = new cc.Color();
-                    this._strokeColor.set(value);
-                    this.updateGear(4);
-                    this.updateStrokeColor();
-                }
+                if (!this._strokeColor)
+                    this._strokeColor = new cc.Color();
+                this._strokeColor.set(value);
+                this.updateGear(4);
+                this.updateStrokeColor();
             },
             enumerable: false,
             configurable: true
@@ -8634,23 +8636,21 @@ window.__extends = (this && this.__extends) || (function () {
                 return this._shadowOffset;
             },
             set: function (value) {
-                if (!this._shadowOffset || !this._shadowOffset.equals(value)) {
-                    if (!this._shadowOffset)
-                        this._shadowOffset = new cc.Vec2();
-                    this._shadowOffset.set(value);
-                    if (this._shadowOffset.x != 0 || this._shadowOffset.y != 0) {
-                        if (!this._shadow) {
-                            this._shadow = this._node.addComponent(cc.LabelShadow);
-                            this.updateShadowColor();
-                        }
-                        else
-                            this._shadow.enabled = true;
-                        this._shadow.offset.x = value.x;
-                        this._shadow.offset.y = -value.y;
+                if (!this._shadowOffset)
+                    this._shadowOffset = new cc.Vec2();
+                this._shadowOffset.set(value);
+                if (this._shadowOffset.x != 0 || this._shadowOffset.y != 0) {
+                    if (!this._shadow) {
+                        this._shadow = this._node.addComponent(cc.LabelShadow);
+                        this.updateShadowColor();
                     }
-                    else if (this._shadow)
-                        this._shadow.enabled = false;
+                    else
+                        this._shadow.enabled = true;
+                    this._shadow.offset.x = value.x;
+                    this._shadow.offset.y = -value.y;
                 }
+                else if (this._shadow)
+                    this._shadow.enabled = false;
             },
             enumerable: false,
             configurable: true
@@ -8660,12 +8660,10 @@ window.__extends = (this && this.__extends) || (function () {
                 return this._shadowColor;
             },
             set: function (value) {
-                if (!this._shadowColor || !this._shadowColor.equals(value)) {
-                    if (!this._shadowColor)
-                        this._shadowColor = new cc.Color();
-                    this._shadowColor.set(value);
-                    this.updateShadowColor();
-                }
+                if (!this._shadowColor)
+                    this._shadowColor = new cc.Color();
+                this._shadowColor.set(value);
+                this.updateShadowColor();
             },
             enumerable: false,
             configurable: true
@@ -8785,7 +8783,7 @@ window.__extends = (this && this.__extends) || (function () {
             if (this._templateVars)
                 text2 = this.parseTemplate(text2);
             if (this._ubbEnabled)
-                text2 = fgui.UBBParser.inst.parse(fgui.ToolSet.encodeHTML(text2), true);
+                text2 = fgui.UBBParser.inst.parse(text2, true);
             this._label.string = text2;
         };
         GTextField.prototype.assignFont = function (label, value) {
@@ -8988,6 +8986,7 @@ window.__extends = (this && this.__extends) || (function () {
         return RichTextImageAtlas;
     }(cc.SpriteAtlas));
     fgui.RichTextImageAtlas = RichTextImageAtlas;
+    var imageAtlas = new RichTextImageAtlas();
     var GRichTextField = (function (_super) {
         __extends(GRichTextField, _super);
         function GRichTextField() {
@@ -9001,7 +9000,7 @@ window.__extends = (this && this.__extends) || (function () {
             this._richText = this._node.addComponent(cc.RichText);
             this._richText.handleTouchEvent = false;
             this.autoSize = fgui.AutoSizeType.None;
-            this._richText.imageAtlas = GRichTextField.imageAtlas;
+            this._richText.imageAtlas = imageAtlas;
         };
         Object.defineProperty(GRichTextField.prototype, "align", {
             get: function () {
@@ -9061,7 +9060,7 @@ window.__extends = (this && this.__extends) || (function () {
             if (this._ubbEnabled) {
                 fgui.UBBParser.inst.linkUnderline = this.linkUnderline;
                 fgui.UBBParser.inst.linkColor = this.linkColor;
-                text2 = fgui.UBBParser.inst.parse(fgui.ToolSet.encodeHTML(text2));
+                text2 = fgui.UBBParser.inst.parse(text2);
             }
             if (this._bold)
                 text2 = "<b>" + text2 + "</b>";
@@ -9097,7 +9096,7 @@ window.__extends = (this && this.__extends) || (function () {
                     fontSize = font._fntConfig.fontSize;
             }
             this._richText.fontSize = fontSize;
-            this._richText.lineHeight = fontSize + this._leading;
+            this._richText.lineHeight = fontSize + this._leading * 2;
         };
         GRichTextField.prototype.updateOverflow = function () {
             if (this._autoSize == fgui.AutoSizeType.Both)
@@ -9111,7 +9110,6 @@ window.__extends = (this && this.__extends) || (function () {
             if (this._autoSize != fgui.AutoSizeType.Both)
                 this._richText.maxWidth = this._width;
         };
-        GRichTextField.imageAtlas = new RichTextImageAtlas();
         return GRichTextField;
     }(fgui.GTextField));
     fgui.GRichTextField = GRichTextField;
@@ -11624,6 +11622,7 @@ window.__extends = (this && this.__extends) || (function () {
             this._scrollStep = fgui.UIConfig.defaultScrollStep;
             this._mouseWheelStep = this._scrollStep * 2;
             this._decelerationRate = fgui.UIConfig.defaultScrollDecelerationRate;
+            this._snappingPolicy = 0;
             o.on(fgui.Event.TOUCH_BEGIN, this.onTouchBegin, this);
             o.on(fgui.Event.TOUCH_MOVE, this.onTouchMove, this);
             o.on(fgui.Event.TOUCH_END, this.onTouchEnd, this);
@@ -11843,6 +11842,16 @@ window.__extends = (this && this.__extends) || (function () {
             },
             set: function (value) {
                 this._snapToItem = value;
+            },
+            enumerable: false,
+            configurable: true
+        });
+        Object.defineProperty(ScrollPane.prototype, "snappingPolicy", {
+            get: function () {
+                return this._snappingPolicy;
+            },
+            set: function (value) {
+                this._snappingPolicy = value;
             },
             enumerable: false,
             configurable: true
@@ -12292,6 +12301,8 @@ window.__extends = (this && this.__extends) || (function () {
             this._contentSize.x = aWidth;
             this._contentSize.y = aHeight;
             this.handleSizeChanged();
+            if (this._snapToItem && this._snappingPolicy != 0 && this._xPos == 0 && this._yPos == 0)
+                this.posChanged(false);
         };
         ScrollPane.prototype.changeContentSizeOnScrolling = function (deltaWidth, deltaHeight, deltaPosX, deltaPosY) {
             var isRightmost = this._xPos == this._overlapSize.x;
@@ -12895,6 +12906,23 @@ window.__extends = (this && this.__extends) || (function () {
             return value;
         };
         ScrollPane.prototype.alignPosition = function (pos, inertialScrolling) {
+            var ax = 0, ay = 0;
+            if (this._snappingPolicy == 1) {
+                if (this._owner.numChildren > 0) {
+                    var obj = this._owner.getChildAt(0);
+                    ax = Math.floor(this._viewSize.x * 0.5 - obj.width * 0.5);
+                    ay = Math.floor(this._viewSize.y * 0.5 - obj.height * 0.5);
+                }
+            }
+            else if (this._snappingPolicy == 2) {
+                if (this._owner.numChildren > 0) {
+                    var obj = this._owner.getChildAt(0);
+                    ax = Math.floor(this._viewSize.x - obj.width);
+                    ay = Math.floor(this._viewSize.y - obj.height);
+                }
+            }
+            pos.x -= ax;
+            pos.y -= ay;
             if (this._pageMode) {
                 pos.x = this.alignByPage(pos.x, "x", inertialScrolling);
                 pos.y = this.alignByPage(pos.y, "y", inertialScrolling);
@@ -12906,6 +12934,8 @@ window.__extends = (this && this.__extends) || (function () {
                 if (pos.y < 0 && pos.y > -this._overlapSize.y)
                     pos.y = -pt.y;
             }
+            pos.x += ax;
+            pos.y += ay;
         };
         ScrollPane.prototype.alignByPage = function (pos, axis, inertialScrolling) {
             var page;
@@ -13257,7 +13287,7 @@ window.__extends = (this && this.__extends) || (function () {
             if (delay == 0)
                 this.onDelayedPlay();
             else
-                fgui.GTween.delayedCall(delay).onComplete(this.onDelayedPlay, this);
+                fgui.GTween.delayedCall(delay).setTarget(this).onComplete(this.onDelayedPlay, this);
         };
         Transition.prototype.stop = function (setToComplete, processCallback) {
             if (setToComplete == undefined)
@@ -13571,7 +13601,7 @@ window.__extends = (this && this.__extends) || (function () {
         Transition.prototype.internalPlay = function () {
             this._ownerBaseX = this._owner.x;
             this._ownerBaseY = this._owner.y;
-            this._totalTasks = 0;
+            this._totalTasks = 1;
             var cnt = this._items.length;
             var item;
             var needSkipAnimations = false;
@@ -13599,6 +13629,7 @@ window.__extends = (this && this.__extends) || (function () {
             }
             if (needSkipAnimations)
                 this.skipAnimations();
+            this._totalTasks--;
         };
         Transition.prototype.playItem = function (item) {
             var time;
@@ -13739,7 +13770,7 @@ window.__extends = (this && this.__extends) || (function () {
                 target.setProp(fgui.ObjectPropID.Playing, playStartTime >= 0);
                 target.setProp(fgui.ObjectPropID.Frame, frame);
                 if (playTotalTime > 0)
-                    target.setProp(fgui.ObjectPropID.DeltaTime, playTotalTime * 1000);
+                    target.setProp(fgui.ObjectPropID.DeltaTime, playTotalTime);
             }
         };
         Transition.prototype.onDelayedPlayItem = function (tweener) {
@@ -13870,11 +13901,16 @@ window.__extends = (this && this.__extends) || (function () {
             if (this._playing && this._totalTasks == 0) {
                 if (this._totalTimes < 0) {
                     this.internalPlay();
+                    if (this._totalTasks == 0)
+                        fgui.GTween.delayedCall(0).setTarget(this).onComplete(this.checkAllComplete, this);
                 }
                 else {
                     this._totalTimes--;
-                    if (this._totalTimes > 0)
+                    if (this._totalTimes > 0) {
                         this.internalPlay();
+                        if (this._totalTasks == 0)
+                            fgui.GTween.delayedCall(0).setTarget(this).onComplete(this.checkAllComplete, this);
+                    }
                     else {
                         this._playing = false;
                         var cnt = this._items.length;
@@ -13949,7 +13985,12 @@ window.__extends = (this && this.__extends) || (function () {
                     item.target.setSkew(value.f1, value.f2);
                     break;
                 case ActionType.Color:
-                    item.target.setProp(fgui.ObjectPropID.Color, value.f1);
+                    var color = item.target.getProp(fgui.ObjectPropID.Color);
+                    if (color instanceof cc.Color) {
+                        var i = Math.floor(value.f1);
+                        color.setR((i >> 16) & 0xFF).setG((i >> 8) & 0xFF).setB(i & 0xFF);
+                        item.target.setProp(fgui.ObjectPropID.Color, color);
+                    }
                     break;
                 case ActionType.Animation:
                     if (value.frame >= 0)
@@ -14091,7 +14132,8 @@ window.__extends = (this && this.__extends) || (function () {
                     value.f2 = buffer.readFloat();
                     break;
                 case ActionType.Color:
-                    value.f1 = buffer.readColor().toRGBValue();
+                    var color = buffer.readColor();
+                    value.f1 = (color.getR() << 16) + (color.getG() << 8) + color.getB();
                     break;
                 case ActionType.Animation:
                     value.playing = buffer.readBool();
@@ -15738,8 +15780,12 @@ window.__extends = (this && this.__extends) || (function () {
             configurable: true
         });
         Image.prototype.setupFill = function () {
-            if (this._fillMethod == fgui.FillMethod.Horizontal || this._fillMethod == fgui.FillMethod.Vertical) {
+            if (this._fillMethod == fgui.FillMethod.Horizontal) {
                 this._fillClockwise = this._fillOrigin == fgui.FillOrigin.Right || this._fillOrigin == fgui.FillOrigin.Bottom;
+                this.fillStart = this._fillClockwise ? 1 : 0;
+            }
+            else if (this._fillMethod == fgui.FillMethod.Vertical) {
+                this._fillClockwise = this._fillOrigin == fgui.FillOrigin.Left || this._fillOrigin == fgui.FillOrigin.Top;
                 this.fillStart = this._fillClockwise ? 1 : 0;
             }
             else {
@@ -15899,19 +15945,19 @@ window.__extends = (this && this.__extends) || (function () {
             this._repeatedCount = anotherMc._repeatedCount;
             this.drawFrame();
         };
-        MovieClip.prototype.advance = function (timeInMiniseconds) {
+        MovieClip.prototype.advance = function (timeInSeconds) {
             var beginFrame = this._frame;
             var beginReversed = this._reversed;
-            var backupTime = timeInMiniseconds;
+            var backupTime = timeInSeconds;
             while (true) {
                 var tt = this.interval + this._frames[this._frame].addDelay;
                 if (this._frame == 0 && this._repeatedCount > 0)
                     tt += this.repeatDelay;
-                if (timeInMiniseconds < tt) {
+                if (timeInSeconds < tt) {
                     this._frameElapsed = 0;
                     break;
                 }
-                timeInMiniseconds -= tt;
+                timeInSeconds -= tt;
                 if (this.swing) {
                     if (this._reversed) {
                         this._frame--;
@@ -15938,8 +15984,8 @@ window.__extends = (this && this.__extends) || (function () {
                     }
                 }
                 if (this._frame == beginFrame && this._reversed == beginReversed) {
-                    var roundTime = backupTime - timeInMiniseconds;
-                    timeInMiniseconds -= Math.floor(timeInMiniseconds / roundTime) * roundTime;
+                    var roundTime = backupTime - timeInSeconds;
+                    timeInSeconds -= Math.floor(timeInSeconds / roundTime) * roundTime;
                 }
             }
             this.drawFrame();
@@ -18369,7 +18415,9 @@ window.__extends = (this && this.__extends) || (function () {
                         freePosStart = i;
                 }
                 else {
-                    if (!tweener._paused)
+                    if ((tweener._target instanceof fgui.GObject) && tweener._target.node == null)
+                        tweener._killed = true;
+                    else if (!tweener._paused)
                         tweener._update(dt);
                     if (freePosStart != -1) {
                         tweens[freePosStart] = tweener;

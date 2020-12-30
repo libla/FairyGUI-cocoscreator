@@ -21,10 +21,8 @@ namespace fgui {
         }
 
         public set color(value: cc.Color) {
-            if (!this._node.color.equals(value)) {
-                this._node.color = value;
-                this.updateGear(4);
-            }
+            this._node.color = value;
+            this.updateGear(4);
         }
 
         public get playing(): boolean {
@@ -65,8 +63,8 @@ namespace fgui {
             this._content.syncStatus(anotherMc._content);
         }
 
-        public advance(timeInMiniseconds: number): void {
-            this._content.advance(timeInMiniseconds);
+        public advance(timeInSeconds: number): void {
+            this._content.advance(timeInSeconds);
         }
 
         //从start帧开始，播放到end帧（-1表示结尾），重复times次（0表示无限循环），循环结束后，停止在endAt帧（-1表示参数end）

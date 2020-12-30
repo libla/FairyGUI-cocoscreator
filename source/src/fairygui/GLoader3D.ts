@@ -177,17 +177,15 @@ namespace fgui {
         }
 
         public set color(value: cc.Color) {
-            if (!this._color.equals(value)) {
-                this._color.set(value);
-                this.updateGear(4);
+            this._color.set(value);
+            this.updateGear(4);
 
-                if (this._content)
-                    this._content.node.color = value;
-            }
+            if (this._content)
+                this._content.node.color = value;
         }
 
-        public get content(): sp.Skeleton | dragonBones.DragonBones {
-            return
+        public get content(): sp.Skeleton | dragonBones.ArmatureDisplay {
+            return this._content;
         }
 
         protected loadContent(): void {
@@ -236,6 +234,7 @@ namespace fgui {
 
         public setSpine(asset: sp.SkeletonData, anchor: cc.Vec2, pma?: boolean): void {
             this.url = null;
+            this.clearContent();
 
             let node = new cc.Node();
             node.color = this._color;
@@ -252,6 +251,7 @@ namespace fgui {
 
         public setDragonBones(asset: dragonBones.DragonBonesAsset, atlasAsset: dragonBones.DragonBonesAtlasAsset, anchor: cc.Vec2, pma?: boolean): void {
             this.url = null;
+            this.clearContent();
 
             let node = new cc.Node();
             node.color = this._color;

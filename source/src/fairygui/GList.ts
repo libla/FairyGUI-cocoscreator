@@ -53,6 +53,7 @@ namespace fgui {
         }
 
         public dispose(): void {
+            this._partner.unschedule(this._refreshVirtualList);
             this._pool.clear();
             super.dispose();
         }
@@ -242,7 +243,8 @@ namespace fgui {
 
         public removeChildAt(index: number, dispose?: boolean): GObject {
             var child: GObject = super.removeChildAt(index, dispose);
-            child.off(Event.CLICK, this.onClickItem, this);
+            if (!dispose)
+                child.off(Event.CLICK, this.onClickItem, this);
 
             return child;
         }

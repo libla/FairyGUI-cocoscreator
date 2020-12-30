@@ -117,7 +117,7 @@ namespace fgui {
             if (delay == 0)
                 this.onDelayedPlay();
             else
-                GTween.delayedCall(delay).onComplete(this.onDelayedPlay, this);
+                GTween.delayedCall(delay).setTarget(this).onComplete(this.onDelayedPlay, this);
         }
 
         public stop(setToComplete?: boolean, processCallback?: boolean): void {
@@ -468,7 +468,7 @@ namespace fgui {
             this._ownerBaseX = this._owner.x;
             this._ownerBaseY = this._owner.y;
 
-            this._totalTasks = 0;
+            this._totalTasks = 1;
 
             var cnt: number = this._items.length;
             var item: Item;
@@ -501,6 +501,8 @@ namespace fgui {
 
             if (needSkipAnimations)
                 this.skipAnimations();
+
+            this._totalTasks--;
         }
 
         private playItem(item: Item): void {
@@ -666,7 +668,7 @@ namespace fgui {
                 target.setProp(ObjectPropID.Playing, playStartTime >= 0);
                 target.setProp(ObjectPropID.Frame, frame);
                 if (playTotalTime > 0)
-                    target.setProp(ObjectPropID.DeltaTime, playTotalTime * 1000);
+                    target.setProp(ObjectPropID.DeltaTime, playTotalTime);
             }
         }
 
@@ -825,11 +827,16 @@ namespace fgui {
             if (this._playing && this._totalTasks == 0) {
                 if (this._totalTimes < 0) {
                     this.internalPlay();
+                    if (this._totalTasks == 0)
+                        GTween.delayedCall(0).setTarget(this).onComplete(this.checkAllComplete, this);
                 }
                 else {
                     this._totalTimes--;
-                    if (this._totalTimes > 0)
+                    if (this._totalTimes > 0) {
                         this.internalPlay();
+                        if (this._totalTasks == 0)
+                            GTween.delayedCall(0).setTarget(this).onComplete(this.checkAllComplete, this);
+                    }
                     else {
                         this._playing = false;
 
@@ -916,7 +923,12 @@ namespace fgui {
                     break;
 
                 case ActionType.Color:
-                    item.target.setProp(ObjectPropID.Color, value.f1);
+                    let color: any = item.target.getProp(ObjectPropID.Color);
+                    if (color instanceof cc.Color) {
+                        let i = Math.floor(value.f1);
+                        color.setR((i >> 16) & 0xFF).setG((i >> 8) & 0xFF).setB(i & 0xFF);
+                        item.target.setProp(ObjectPropID.Color, color);
+                    }
                     break;
 
                 case ActionType.Animation:
@@ -1094,7 +1106,8 @@ namespace fgui {
                     break;
 
                 case ActionType.Color:
-                    value.f1 = buffer.readColor().toRGBValue();
+                    let color = buffer.readColor();
+                    value.f1 = (color.getR() << 16) + (color.getG() << 8) + color.getB();
                     break;
 
                 case ActionType.Animation:
