@@ -9464,8 +9464,10 @@ window.__extends = (this && this.__extends) || (function () {
                     popup = this._popupStack[i];
                     this.closePopup(popup);
                     this._justClosedPopups.push(popup);
+                    this._popupStack.length--;
+                    if (popup instanceof fgui.Window && popup.modal)
+                        break;
                 }
-                this._popupStack.length = 0;
             }
         };
         GRoot.prototype.onWinResize = function () {

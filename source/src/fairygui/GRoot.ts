@@ -395,8 +395,10 @@ namespace fgui {
                     popup = this._popupStack[i];
                     this.closePopup(popup);
                     this._justClosedPopups.push(popup);
+                    this._popupStack.length--;
+                    if (popup instanceof Window && popup.modal)
+                        break;
                 }
-                this._popupStack.length = 0;
             }
         }
 
